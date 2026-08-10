@@ -1,24 +1,10 @@
 [HAproxy]
-HAproxy ansible_host=10.0.1.218
+HAproxy
 
 [webservers]
-devA ansible_host=10.0.1.58
-#devB ansible_host=10.0.1.3
-#devC ansible_host=10.0.1.4
-
-[bastion]
-bastionET2598 ansible_host=194.47.155.141
+devA
+devB
+devC
 
 [all:vars]
-ansible_user=ubuntu
-ansible_python_interpreter=/usr/bin/python3
-
-private_network_cidr: 10.0.1.0/27
-private_gateway: 10.0.1.1
-
-snmp_community: public
-snmp_internal_port: 161
-snmp_external_port: 1611
-
-flask_app_port: 5000
-flask_app_path: /opt/flask_app
+ansible_user=ubuntupe

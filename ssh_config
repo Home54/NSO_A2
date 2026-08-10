@@ -1,0 +1,28 @@
+Host bastionET2598
+    HostName <Bastion外部IP>
+    User ubuntu
+    IdentityFile ~/.ssh/nso
+
+Host HAproxy
+    HostName 10.0.1.10
+    User ubuntu
+    IdentityFile ~/.ssh/nso
+    ProxyJump bastionET2598
+
+Host devA
+    HostName 10.0.1.11
+    User ubuntu
+    IdentityFile ~/.ssh/nso
+    ProxyJump bastionET2598
+
+Host devB
+    HostName 10.0.1.12
+    User ubuntu
+    IdentityFile ~/.ssh/nso
+    ProxyJump bastionET2598
+
+Host devC
+    HostName 10.0.1.13
+    User ubuntu
+    IdentityFile ~/.ssh/nso
+    ProxyJump bastionET2598

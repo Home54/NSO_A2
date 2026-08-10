@@ -1,0 +1,10 @@
+<network>
+  <name>site-local</name>
+
+  <bridge stp="on" delay="0"/>
+
+  <forward mode="none"/>
+
+  <ip address="10.0.1.1"
+      netmask="255.255.255.224"/>
+</network>

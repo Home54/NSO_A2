@@ -1,0 +1,27 @@
+#cloud-config
+
+hostname: devB
+manage_etc_hosts: true
+
+users:
+  - name: ubuntu
+    groups:
+      - sudo
+    shell: /bin/bash
+    sudo:
+      - ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEZjEl+VAmV69xDZ9AwIt0iIyuJTbRYO4fddCVDED8uZ robin@fedora
+
+ssh_pwauth: false
+disable_root: true
+
+packages:
+  - openssh-server
+  - python3
+  - python3-apt
+  - curl
+
+runcmd:
+  - systemctl enable ssh
+  - systemctl restart ssh
