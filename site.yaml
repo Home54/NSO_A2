@@ -1,0 +1,215 @@
+---
+# ============================================================
+# Web servers: devA, devB, devC
+# ============================================================
+
+- name: Configure Flask and SNMP servers
+  hosts: webservers
+  become: true
+
+  tasks:
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - snmpd
+        state: present
+        update_cache: true
+
+    - name: Install Flask and Gunicorn
+      ansible.builtin.pip:
+        name:
+          - flask
+          - gunicorn
+        state: present
+
+    - name: Create Flask application directory
+      ansible.builtin.file:
+        path: /opt/nso-flask
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy application2.py
+      ansible.builtin.copy:
+        src: files/application2.py
+        dest: /opt/nso-flask/application2.py
+        owner: root
+        group: root
+        mode: "0755"
+      notify:
+        - Restart Flask
+
+    - name: Install Flask systemd service
+      ansible.builtin.template:
+        src: templates/flask-app.service.j2
+        dest: /etc/systemd/system/nso-flask.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart Flask
+
+    - name: Configure SNMP
+      ansible.builtin.template:
+        src: templates/snmpd.conf.j2
+        dest: /etc/snmp/snmpd.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart SNMP
+
+    - name: Enable Flask service
+      ansible.builtin.systemd:
+        name: nso-flask
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Enable SNMP service
+      ansible.builtin.systemd:
+        name: snmpd
+        enabled: true
+        state: started
+
+  handlers:
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart Flask
+      ansible.builtin.systemd:
+        name: nso-flask
+        state: restarted
+
+    - name: Restart SNMP
+      ansible.builtin.systemd:
+        name: snmpd
+        state: restarted
+
+
+# ============================================================
+# HAproxy server
+# ============================================================
+
+- name: Configure HAProxy and Nginx
+  hosts: HAproxy
+  become: true
+
+  vars:
+    haproxy_ui_password: "{{ lookup('file', 'uipassword') | trim }}"
+
+  tasks:
+
+    - name: Install HAProxy and Nginx
+      ansible.builtin.apt:
+        name:
+          - haproxy
+          - nginx
+          - libnginx-mod-stream
+        state: present
+        update_cache: true
+        
+    - name: Create nginx modules-enabled directory
+      ansible.builtin.file:
+        path: /etc/nginx/modules-enabled
+        state: directory
+        mode: '0755'
+
+    - name: Create nginx modules-enabled directory
+      ansible.builtin.file:
+        path: /etc/nginx/modules-enabled
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Enable nginx stream module
+      ansible.builtin.copy:
+        dest: /etc/nginx/modules-enabled/50-mod-stream.conf
+        content: |
+          load_module modules/ngx_stream_module.so;
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Configure Nginx
+      ansible.builtin.template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart Nginx
+
+    - name: Enable HAProxy
+      ansible.builtin.systemd:
+        name: haproxy
+        enabled: true
+        state: started
+
+    - name: Enable Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        enabled: true
+        state: started
+
+  handlers:
+
+    - name: Restart HAProxy
+      ansible.builtin.systemd:
+        name: haproxy
+        state: restarted
+
+    - name: Restart Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+
+
+# ============================================================
+# Functional test
+# ============================================================
+
+- name: Test load balanced Flask service
+  hosts: HAproxy
+  become: false
+
+  tasks:
+
+    - name: Send three requests
+      ansible.builtin.uri:
+        url: http://127.0.0.1/
+        return_content: true
+        headers:
+          Connection: close
+      register: flask_test
+      loop:
+        - 1
+        - 2
+        - 3
+
+    - name: Combine responses
+      ansible.builtin.set_fact:
+        flask_responses: >-
+          {{
+            flask_test.results
+            | map(attribute='content')
+            | join(' ')
+          }}
+
+    - name: Verify all three servers responded
+      ansible.builtin.assert:
+        that:
+          - "'devA' in flask_responses"
+          - "'devB' in flask_responses"
+          - "'devC' in flask_responses"
+        fail_msg: "Not all three Flask servers responded."
+        success_msg: "devA, devB and devC all responded successfully."

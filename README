@@ -1,18 +1,373 @@
-1.network layout
-                 default NAT
-              192.168.122.0/24
-                       |
-     +---------+-------+-------+-------+-------+
-     |         |               |       |       |
- Bastion    HAproxy          devA    devB    devC
- .20         .21             .31     .32     .33
-     |         |               |       |       |
-     +---------+-------+-------+-------+-------+
-                       |
-                   site-local
-                  10.0.1.0/27
-                       |
-     +---------+-------+-------+-------+-------+
-     |         |               |       |       |
- Bastion    HAproxy          devA    devB    devC
- .5          .10             .11     .12     .13
+# NSO_A2 - HAProxy Load Balancing Environment
+
+
+## Overview
+
+This project deploys a simple Flask application behind HAProxy using Ansible.
+
+The environment contains:
+
+- One HAProxy server
+- Three Flask application servers
+- One Bastion host
+- One internal site-local network
+
+The deployment is fully automated using Ansible.
+
+
+## Network Topology
+
+
+                Internet
+
+                   |
+      +------------+------------+
+      |                         |
+   HTTP:80                  UDP:1611
+      |                         |
+   HAProxy                    Nginx
+      |                         |
+      |                      UDP:161
+      |
+ Flask Load Balance
+
+   +------+------+------+
+   |      |      |
+  devA   devB   devC
+
+Bastion provides SSH access
+to the internal network.
+
+
+
+## Network Addressing
+
+
+### External NAT Network
+
+
+192.168.122.0/24
+
+
+
+| Host | Address |
+|-|-|
+| Bastion | 192.168.122.20 |
+| HAproxy | 192.168.122.21 |
+
+
+### Site-local Network
+
+
+10.0.1.0/27
+
+
+
+| Host | Address |
+|-|-|
+| Bastion |10.0.1.5|
+| HAproxy |10.0.1.10|
+| devA |10.0.1.11|
+| devB |10.0.1.12|
+| devC |10.0.1.13|
+
+
+
+## Repository Structure
+
+
+
+NSO_A2/
+
+├── hosts
+├── site.yaml
+├── README
+├── uipassword
+│
+├── files/
+│ └── application2.py
+│
+└── templates/
+├── flask-app.service.j2
+├── haproxy.cfg.j2
+├── nginx.conf.j2
+└── snmpd.conf.j2
+
+
+
+## Components
+
+
+### Flask Application
+
+The Flask application is deployed on:
+
+
+devA
+devB
+devC
+
+
+
+The application returns:
+
+- Hostname
+- Current time
+
+
+The application is managed by systemd and started automatically.
+
+
+### HAProxy
+
+HAProxy provides HTTP load balancing.
+
+Service:
+
+
+TCP port 80
+
+
+
+Backend servers:
+
+
+devA 10.0.1.11:80
+devB 10.0.1.12:80
+devC 10.0.1.13:80
+
+
+
+Algorithm:
+
+
+round-robin
+
+
+
+
+### HAProxy Statistics
+
+Statistics page:
+
+
+http://HAproxy-IP:8011/stats
+
+
+
+Requirements:
+
+- Password protected
+- Refresh interval: 1 second
+
+
+Password is stored in:
+
+
+uipassword
+
+
+
+
+### Nginx UDP Load Balancer
+
+HAProxy cannot handle UDP traffic.
+
+Therefore Nginx is used for SNMP load balancing.
+
+
+External:
+
+
+UDP 1611
+
+
+
+Internal:
+
+
+UDP 161
+
+
+
+Backend:
+
+
+devA
+devB
+devC
+
+
+
+
+### SNMP
+
+SNMP daemon runs on:
+
+
+devA
+devB
+devC
+
+
+
+Listening port:
+
+
+UDP 161
+
+
+
+
+## SSH Access
+
+
+The environment uses Bastion host as SSH jump server.
+
+
+Example:
+
+
+
+Laptop
+|
+|
+Bastion
+|
+|
+devA/devB/devC
+
+
+
+SSH configuration uses:
+
+
+ProxyJump bastionET2598
+
+
+
+
+## Deployment
+
+
+Install Ansible:
+
+
+
+sudo apt install ansible
+
+
+
+Test connectivity:
+
+
+
+ansible -i hosts all -m ping
+
+
+
+Expected:
+
+
+
+HAproxy SUCCESS
+devA SUCCESS
+devB SUCCESS
+devC SUCCESS
+
+
+
+
+Deploy:
+
+
+
+ansible-playbook -i hosts site.yaml
+
+
+
+
+## Verification
+
+
+### Test Flask service directly
+
+
+
+curl http://10.0.1.11
+curl http://10.0.1.12
+curl http://10.0.1.13
+
+
+
+
+### Test HAProxy
+
+
+
+curl http://HAproxy-IP
+
+
+
+Multiple requests should return responses from:
+
+
+devA
+devB
+devC
+
+
+
+
+### Test HAProxy statistics
+
+
+Open:
+
+
+
+http://HAproxy-IP:8011/stats
+
+
+
+Use username:
+
+
+admin
+
+
+
+Password:
+
+
+stored in uipassword
+
+
+
+
+## Ansible Files
+
+
+### hosts
+
+Defines managed machines.
+
+
+### site.yaml
+
+Main deployment playbook.
+
+
+### templates/
+
+Contains configuration templates:
+
+- HAProxy configuration
+- Nginx UDP configuration
+- Flask systemd service
+- SNMP configuration
+
+
+### files/
+
+Contains Flask application source code.

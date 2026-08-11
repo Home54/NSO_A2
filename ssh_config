@@ -1,28 +1,43 @@
 Host bastionET2598
-    HostName <Bastion外部IP>
+    HostName 192.168.122.20
     User ubuntu
-    IdentityFile ~/.ssh/nso
+    IdentityFile /home/robin/.ssh/nso_key
+    IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
+
 
 Host HAproxy
     HostName 10.0.1.10
     User ubuntu
-    IdentityFile ~/.ssh/nso
+    IdentityFile /home/robin/.ssh/nso_key
+    IdentitiesOnly yes
     ProxyJump bastionET2598
+    StrictHostKeyChecking accept-new
+
 
 Host devA
     HostName 10.0.1.11
     User ubuntu
-    IdentityFile ~/.ssh/nso
+    IdentityFile /home/robin/.ssh/nso_key
+    IdentitiesOnly yes
     ProxyJump bastionET2598
+    StrictHostKeyChecking accept-new
+
 
 Host devB
     HostName 10.0.1.12
     User ubuntu
-    IdentityFile ~/.ssh/nso
+    IdentityFile /home/robin/.ssh/nso_key
+    IdentitiesOnly yes
     ProxyJump bastionET2598
+    StrictHostKeyChecking accept-new
+
 
 Host devC
     HostName 10.0.1.13
     User ubuntu
-    IdentityFile ~/.ssh/nso
+    IdentityFile /home/robin/.ssh/nso_key
+    IdentitiesOnly yes
     ProxyJump bastionET2598
+    StrictHostKeyChecking accept-new
+

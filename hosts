@@ -7,4 +7,4 @@ devB
 devC
 
 [all:vars]
-ansible_user=ubuntupe
+ansible_user=ubuntu
